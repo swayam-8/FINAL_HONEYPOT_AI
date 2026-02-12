@@ -14,7 +14,7 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
         logger.info(`✨ Creating NEW Session: ${sessionId}`);
         session = new Session({ sessionId, history: [] });
         
-        // Hydrate history if provided in the first request
+        // Hydrate history if provided
         if (incomingHistory.length > 0) {
             incomingHistory.forEach(msg => {
                 session.history.push({ 
@@ -23,8 +23,6 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
                 });
             });
         }
-    } else {
-        logger.info(`🔄 Updating OLD Session: ${sessionId}`);
     }
 
     // 2. Key Assignment
@@ -35,7 +33,6 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     }
 
     // 3. INTELLIGENCE EXTRACTION (Deep Scan)
-    // Scan both the new message AND any history passed in the request
     const textsToScan = [incomingText];
     if (incomingHistory.length > 0) {
         incomingHistory.forEach(msg => textsToScan.push(msg.text));
@@ -46,9 +43,8 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
         const intel = intelService.extract(text);
         Object.keys(intel).forEach(k => {
             if (intel[k].length > 0) {
-                // Merge new findings with existing data (Deduplicate)
                 const combined = [...session.intelligence[k], ...intel[k]];
-                session.intelligence[k] = [...new Set(combined)]; // Remove duplicates
+                session.intelligence[k] = [...new Set(combined)];
                 foundNewIntel = true;
             }
         });
@@ -66,7 +62,6 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
         aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText);
     }
 
-    // 6. Update State
     const { reply, isScam } = aiResult;
     session.history.push({ role: "assistant", content: reply });
     
@@ -75,30 +70,35 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
         session.riskScore = "HIGH";
     }
 
-    // ✅ CRITICAL FIX: Tell Mongoose that arrays have changed!
-    // Without this, Mongoose ignores changes to 'intelligence' and 'history'
+    // Tell Mongoose data changed
     if (foundNewIntel) session.markModified('intelligence');
     session.markModified('history');
 
-    // 7. Check Callback
-    const hasIntel = Object.values(session.intelligence).some(arr => arr.length > 0);
+    // =================================================================
+    // 6. IMPROVED CALLBACK LOGIC (The Fix)
+    // =================================================================
     
-    // Trigger if Scam Detected AND (We found Data OR The conversation is long enough)
-    if (session.scamDetected && (hasIntel || session.turnCount >= 2) && !session.reportSent) {
+    // Definition of "High Value" Data
+    const hardIntelTypes = ['bankAccounts', 'upiIds', 'phoneNumbers', 'phishingLinks'];
+    const hasHardIntel = hardIntelTypes.some(k => session.intelligence[k] && session.intelligence[k].length > 0);
+    
+    // Wait for at least 3 turns unless we found hard intel immediately
+    const isMature = session.turnCount >= 3; 
+
+    // Trigger ONLY if we haven't sent a report yet AND (We have Hard Intel OR Chat is deep)
+    if (session.scamDetected && (hasHardIntel || isMature) && !session.reportSent) {
         
         logger.warn(`🚨 SCAM CONFIRMED (${sessionId}). Sending Callback...`);
         
-        // Save BEFORE sending to ensure Callback gets the latest data
-        await session.save(); 
+        await session.save(); // Save first
 
         const success = await guviCallback.sendReport(session);
         if (success) {
             session.reportSent = true;
-            await session.save(); // Save the sent flag
+            await session.save(); 
         }
         keyPool.releaseKey(sessionId);
     } else {
-        // Save normal turn
         await session.save(); 
     }
 

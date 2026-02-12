@@ -84,7 +84,7 @@ const fallbackOpenAI = async (apiKey, history, incomingMsg) => {
     
     try {
         const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo", // Cost effective backup
+            model: "meta-llama/llama-3.1-8b-instant", // Cost effective backup
             messages: [
                 { role: "system", content: "You are a naive elderly victim. Reply naturally." },
                 ...history.slice(-2),

@@ -10,13 +10,14 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// 1. Enable CORS
 app.use(cors());
 app.use(express.json());
 
-// DB Connection
+// 2. Database
 connectDB();
 
-// Swagger Configuration
+// 3. Swagger Configuration
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
@@ -25,8 +26,9 @@ const swaggerOptions = {
             version: '1.0.0',
             description: 'API Documentation for the Honeypot AI System',
         },
+        // Use relative path "/" for compatibility
         servers: [
-            { url: `http://localhost:${PORT}` }
+            { url: "/" } 
         ],
         components: {
             securitySchemes: {
@@ -40,8 +42,12 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// Security Middleware
+// 4. Security Middleware
 app.use((req, res, next) => {
+    // Allow Health Check & Docs
+    if (req.path === '/health' || req.path.startsWith('/api-docs')) {
+        return next();
+    }
     const authKey = req.headers['x-api-key'];
     if (authKey !== process.env.API_SECRET_KEY) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -49,7 +55,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// Routes
+// 5. Routes
 app.use('/api', apiRoutes);
 
 /**

@@ -11,6 +11,7 @@ const sendReport = async (session) => {
             upiIds: session.intelligence.upiIds,
             phishingLinks: session.intelligence.phishingLinks,
             phoneNumbers: session.intelligence.phoneNumbers,
+            emails: session.intelligence.emails, // ✅ NEW
             suspiciousKeywords: session.intelligence.suspiciousKeywords
         },
         agentNotes: `Scam detected. Risk: ${session.riskScore}.`
@@ -18,12 +19,12 @@ const sendReport = async (session) => {
 
     try {
         logger.info(`📤 Sending Callback Payload: ${JSON.stringify(payload, null, 2)}`);
-        
+
         const response = await axios.post('https://hackathon.guvi.in/api/updateHoneyPotFinalResult', payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 5000
         });
-        
+
         logger.info(`✅ CALLBACK SUCCESS: ${response.status} - ${response.statusText}`);
         return true;
     } catch (error) {

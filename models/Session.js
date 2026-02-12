@@ -2,16 +2,16 @@ const mongoose = require('mongoose');
 
 const SessionSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, unique: true, index: true },
-    
+
     // Key Persistence
-    assignedKey: { type: String }, 
+    assignedKey: { type: String },
     assignedProvider: { type: String, default: 'fastrouter' },
 
     // State
     scamDetected: { type: Boolean, default: false },
     riskScore: { type: String, default: "LOW" },
     turnCount: { type: Number, default: 0 },
-    
+
     // ✅ NEW: Track if we have already reported this session
     reportSent: { type: Boolean, default: false },
     callbackStatus: { type: String, default: "PENDING" }, // SUCCESS / FAILED
@@ -22,6 +22,7 @@ const SessionSchema = new mongoose.Schema({
         upiIds: { type: [String], default: [] },
         phishingLinks: { type: [String], default: [] },
         phoneNumbers: { type: [String], default: [] },
+        emails: { type: [String], default: [] }, // ✅ NEW: Capture emails
         suspiciousKeywords: { type: [String], default: [] }
     },
 
@@ -30,6 +31,8 @@ const SessionSchema = new mongoose.Schema({
         content: String,
         timestamp: { type: Date, default: Date.now }
     }],
+
+    totalMessagesExchanged: { type: Number, default: 0 }, // ✅ NEW: Track total messages
 
     lastActive: { type: Date, default: Date.now }
 });

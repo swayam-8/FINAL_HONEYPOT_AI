@@ -1,4 +1,5 @@
 const Session = require('../models/Session');
+const reportScheduler = require('./reportScheduler');
 const keyPool = require('../config/keyPool');
 const aiService = require('./aiService');
 const intelService = require('./intelligenceService');
@@ -107,27 +108,18 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     const hasHardIntel = hardIntelTypes.some(k => session.intelligence[k] && session.intelligence[k].length > 0);
     const isMature = session.turnCount >= 2;
 
-    // ✅ FIX: Allow RE-SENDING if we found new hard intel (Live Update)
-    const shouldReport = session.scamDetected && (hasHardIntel || isMature);
+    // 6. Callback Logic (Delayed Reporting)
+    // The reportScheduler will DEBOUNCE multiple triggers and send only after inactivity.
 
-    // We report if:
-    // 1. It's the first time (!reportSent)
-    // 2. OR we found NEW hard intel (foundNewIntel) to update the dashboard
-    if (shouldReport && (!session.reportSent || foundNewIntel)) {
-
-        logger.info(`🚨 SCAM UPDATE (${sessionId}). Sending Callback...`);
-        await session.save();
-
-        const success = await guviCallback.sendReport(session);
-        if (success) {
-            session.reportSent = true;
-            await session.save();
+    if (session.scamDetected) {
+        // Only schedule if we found something actionable or conversation is mature
+        if (hasHardIntel || isMature) {
+            logger.info(`⏰ Scheduling Delayed Report for ${sessionId}...`);
+            reportScheduler.scheduleReport(sessionId);
         }
-        keyPool.releaseKey(sessionId);
-
-    } else {
-        await session.save();
     }
+
+    await session.save();
 
     return reply;
 };

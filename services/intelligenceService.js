@@ -16,8 +16,10 @@ const PATTERNS = {
     // Links: http/https
     url: /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g,
     
-    // Keywords
-    keywords: /\b(otp|cvv|verify|block|kyc|refund|winner|lottery|expire|urgent|suspend|apk|download)\b/gi
+    // ✅ FIXED: 
+    // 1. Added 'upi'
+    // 2. Changed end \b to \w* to match 'blocked', 'suspension', 'verifying'
+    keywords: /\b(otp|cvv|verif|block|kyc|refund|winner|lottery|expir|urgent|suspend|apk|download|upi)\w*/gi
 };
 
 const extract = (text) => {
@@ -29,7 +31,7 @@ const extract = (text) => {
         upiIds: cleanText.match(PATTERNS.upiId) || [],
         phoneNumbers: cleanText.match(PATTERNS.phone) || [],
         phishingLinks: cleanText.match(PATTERNS.url) || [],
-        suspiciousKeywords: cleanText.match(PATTERNS.keywords) || []
+        suspiciousKeywords: cleanText.match(PATTERNS.keywords) || [] // Now catches "suspension", "blocked"
     };
 };
 

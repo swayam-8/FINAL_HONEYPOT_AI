@@ -9,10 +9,14 @@ const SessionSchema = new mongoose.Schema({
 
     // State
     scamDetected: { type: Boolean, default: false },
-    riskScore: { type: String, default: "LOW" }, // LOW, MEDIUM, HIGH
+    riskScore: { type: String, default: "LOW" },
     turnCount: { type: Number, default: 0 },
     
-    // Intelligence (Set to avoid duplicates)
+    // ✅ NEW: Track if we have already reported this session
+    reportSent: { type: Boolean, default: false },
+    callbackStatus: { type: String, default: "PENDING" }, // SUCCESS / FAILED
+
+    // Intelligence
     intelligence: {
         bankAccounts: { type: [String], default: [] },
         upiIds: { type: [String], default: [] },
@@ -21,7 +25,6 @@ const SessionSchema = new mongoose.Schema({
         suspiciousKeywords: { type: [String], default: [] }
     },
 
-    // Context Window
     history: [{
         role: String,
         content: String,

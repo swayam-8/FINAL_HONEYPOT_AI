@@ -6,71 +6,69 @@ const guviCallback = require('./guviCallback');
 const logger = require('../utils/logger');
 
 /**
- * ⚙️ CORE LOGIC: Handles the entire lifecycle of a request
+ * ⚙️ CORE LOGIC
  */
-const handleSession = async (sessionId, incomingText) => {
+// ✅ FIXED: Accepting 'incomingHistory' argument
+const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     
-    // ============================================================
-    // 1. INTELLIGENT LOAD (Update vs Create Logic)
-    // ============================================================
-    
-    // Check if this session ID already exists in MongoDB
+    // 1. Load Session
     let session = await Session.findOne({ sessionId });
     
     if (session) {
-        // ✅ FOUND! We will update this EXISTING document.
-        // We do NOT create a new one. We just append to this.
         logger.info(`🔄 Updating OLD Session: ${sessionId}`);
     } else {
-        // ❌ NOT FOUND! This is a brand new user. Create fresh.
         logger.info(`✨ Creating NEW Session: ${sessionId}`);
         session = new Session({ sessionId, history: [] });
+        
+        // ✅ NEW: If it's a new session, hydrate DB with provided history
+        if (incomingHistory.length > 0) {
+            incomingHistory.forEach(msg => {
+                session.history.push({ 
+                    role: msg.sender === 'scammer' ? 'user' : 'assistant', 
+                    content: msg.text 
+                });
+            });
+        }
     }
 
-    // ============================================================
-    // 2. ASSIGN API KEY (Sticky Session)
-    // ============================================================
+    // 2. Key Assignment
     const keyData = keyPool.getKeyForSession(sessionId, session.assignedProvider, session.assignedKey);
     if (!session.assignedKey) {
         session.assignedKey = keyData.key;
         session.assignedProvider = keyData.provider;
     }
 
-    // ============================================================
-    // 3. EXTRACT INTELLIGENCE (And Merge with Old Data)
-    // ============================================================
-    const intel = intelService.extract(incomingText);
-    
-    Object.keys(intel).forEach(k => {
-        if (intel[k].length > 0) {
-            // Logic: Take (Old Database Data) + (New Chat Data) -> Remove Duplicates
-            // This UPDATES the existing arrays in the database
-            session.intelligence[k] = [...new Set([...session.intelligence[k], ...intel[k]])];
-        }
+    // 3. Intelligence Extraction (Deep Scan)
+    // ✅ FIXED: Scan BOTH the new message AND the provided history
+    const textsToScan = [incomingText];
+    if (incomingHistory.length > 0) {
+        incomingHistory.forEach(msg => textsToScan.push(msg.text));
+    }
+
+    textsToScan.forEach(text => {
+        const intel = intelService.extract(text);
+        Object.keys(intel).forEach(k => {
+            if (intel[k].length > 0) {
+                // Merge and dedup
+                session.intelligence[k] = [...new Set([...session.intelligence[k], ...intel[k]])];
+            }
+        });
     });
 
-    // ============================================================
-    // 4. UPDATE HISTORY
-    // ============================================================
+    // 4. Update History (New Message)
     session.history.push({ role: "user", content: incomingText });
     session.turnCount += 1;
 
-    // ============================================================
-    // 5. AI PROCESSING
-    // ============================================================
+    // 5. AI Processing
     let aiResult = await aiService.processWithFastRouter(keyData.key, session.history, incomingText);
     
-    // Fallback if FastRouter fails
     if (!aiResult) {
         const backupKey = (process.env.OPENAI_KEYS || "").split(',')[0]; 
         aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText);
     }
 
-    // ============================================================
-    // 6. UPDATE STATE & SAVE
-    // ============================================================
+    // 6. Update State
     const { reply, isScam } = aiResult;
-    
     session.history.push({ role: "assistant", content: reply });
     
     if (isScam) {
@@ -78,33 +76,18 @@ const handleSession = async (sessionId, incomingText) => {
         session.riskScore = "HIGH";
     }
 
-    session.lastActive = new Date();
-
-    // ⚠️ CRITICAL: This line UPDATES the record if it existed, 
-    // or INSERTS it if it was new. Mongoose handles this automatically.
-    await session.save(); 
-
-    // ============================================================
-    // 7. CHECK FOR SCAM REPORT (But Keep Data)
-    // ============================================================
+    // 7. Check Callback (Prevent Duplicates)
     const hasIntel = Object.values(session.intelligence).some(arr => arr.length > 0);
-    const isMature = session.turnCount >= 2;
+    const isMature = session.turnCount >= 1; // Lowered threshold for testing
 
-    // Only report if we haven't reported recently (optional check) or on every detection
-    if (session.scamDetected && (isMature || hasIntel)) {
-        
-        logger.warn(`🚨 SCAM DETECTED (${sessionId}). Reporting...`);
-        
-        // Send Report to GUVI
-        await guviCallback.sendReport(session);
-        
-        // ❌ REMOVED: await Session.deleteOne({ sessionId }); 
-        // ✅ We KEEP the data in MongoDB.
-        
-        // Release the key for others to use, but keep the chat logs in DB
+    if (session.scamDetected && (isMature || hasIntel) && !session.reportSent) {
+        logger.warn(`🚨 SCAM CONFIRMED (${sessionId}). Triggering Callback...`);
+        const success = await guviCallback.sendReport(session);
+        if (success) session.reportSent = true;
         keyPool.releaseKey(sessionId);
     }
 
+    await session.save(); 
     return reply;
 };
 

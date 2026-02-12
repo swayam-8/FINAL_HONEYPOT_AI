@@ -17,14 +17,20 @@ const sendReport = async (session) => {
     };
 
     try {
-        await axios.post('https://hackathon.guvi.in/api/updateHoneyPotFinalResult', payload, {
+        logger.info(`📤 Sending Callback Payload: ${JSON.stringify(payload, null, 2)}`);
+        
+        const response = await axios.post('https://hackathon.guvi.in/api/updateHoneyPotFinalResult', payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 5000
         });
-        logger.info(`✅ [CALLBACK SENT] Session ${session.sessionId}`);
+        
+        logger.info(`✅ CALLBACK SUCCESS: ${response.status} - ${response.statusText}`);
         return true;
     } catch (error) {
-        logger.error(`❌ [CALLBACK FAILED] ${error.message}`);
+        logger.error(`❌ CALLBACK FAILED: ${error.message}`);
+        if (error.response) {
+            logger.error(`Response Data: ${JSON.stringify(error.response.data)}`);
+        }
         return false;
     }
 };

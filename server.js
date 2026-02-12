@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const apiRoutes = require('./routes/apiRoutes');
 const logger = require('./utils/logger');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -13,6 +15,30 @@ app.use(express.json());
 
 // DB Connection
 connectDB();
+
+// Swagger Configuration
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'Honeypot AI Server',
+            version: '1.0.0',
+            description: 'API Documentation for the Honeypot AI System',
+        },
+        servers: [
+            { url: `http://localhost:${PORT}` }
+        ],
+        components: {
+            securitySchemes: {
+                ApiKeyAuth: { type: 'apiKey', in: 'header', name: 'x-api-key' }
+            }
+        },
+        security: [{ ApiKeyAuth: [] }]
+    },
+    apis: ['./routes/*.js', './server.js'],
+};
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Security Middleware
 app.use((req, res, next) => {
@@ -25,6 +51,17 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api', apiRoutes);
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Server is running
+ */
 app.get('/health', (req, res) => res.send('OK'));
 
 app.listen(PORT, () => {

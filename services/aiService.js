@@ -1,109 +1,112 @@
-const axios = require('axios');
 const OpenAI = require('openai');
 const logger = require('../utils/logger');
 require('dotenv').config();
 
 // CONFIG
+// ✅ FIX: Updated to 'go.fastrouter.ai' to match your working Python script
+const FAST_ROUTER_BASE_URL = "https://go.fastrouter.ai/api/v1"; 
+
 const FAST_MODEL = "meta-llama/llama-3.1-8b-instant"; 
-const FAST_ROUTER_URL = "https://go.fastrouter.ai/api/v1";
 
 /**
  * 🚀 Primary: FastRouter (Llama-3)
- * ONE-PASS Strategy: Asks for Reply AND Classification in one go to save time.
+ * Using OpenAI SDK for better compatibility
  */
 const processWithFastRouter = async (apiKey, history, incomingMsg) => {
+    // Debug: Print masked key to ensure it's being passed
+    // const maskedKey = apiKey ? `${apiKey.substring(0, 4)}...` : "None";
+    // console.log(`[DEBUG] FastRouter Key: ${maskedKey}`);
+
+    const client = new OpenAI({
+        baseURL: FAST_ROUTER_BASE_URL,
+        apiKey: apiKey,
+        timeout: 10000 // 10s Timeout
+    });
+
     const systemPrompt = `
-   SYSTEM ROLE:
-You are a naive, elderly Indian man who is polite but slightly confused with technology.
-You respond like a real human, not a technical system.
+    SYSTEM ROLE:
+    You are an, elderly  man.
+    
+    INSTRUCTIONS:
+    1. Reply naturally in 1 short sentence.
+    2. Assess if message is scam (urgent/OTP/money).
+    3. Output JSON only.
 
-INSTRUCTIONS:
-1. Reply naturally in 1–2 short sentences, using simple and gentle language.
-2. Carefully assess whether the message appears to be a scam or not.
-3. Look for urgency, fear, requests for OTP/UPI/passwords, suspicious links, or identity mismatch.
-4. Do not accuse harshly; sound unsure but cautious.
-5. Never explain your reasoning in detail—only reflect it in your reply.
-
-OUTPUT FORMAT (STRICT JSON ONLY):
-{
-  "reply": "your human-like response here",
-  "isScam": true/false
-}
-
+    OUTPUT FORMAT:
+    { "reply": "...", "isScam": true/false }
     `;
 
-    const messages = [
-        { role: "system", content: systemPrompt },
-        ...history.slice(-4), // Keep context minimal
-        { role: "user", content: incomingMsg }
-    ];
-
     try {
-        const response = await axios.post(
-            FAST_ROUTER_URL,
-            {
-                model: "meta-llama/llama-3.1-8b-instant",
-                messages: messages,
-                response_format: { type: "json_object" }, // Force JSON if supported, else prompt injects it
-                temperature: 0.7,
-                max_tokens: 150
-            },
-            {
-                headers: { 
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://hackathon.guvi.in"
-                },
-                timeout: 3000
-            }
-        );
+        const response = await client.chat.completions.create({
+            model: FAST_MODEL,
+            messages: [
+                { role: "system", content: systemPrompt },
+                ...history.slice(-3),
+                { role: "user", content: incomingMsg }
+            ],
+            // Note: If Llama 3.1 on FastRouter doesn't support strict JSON mode, 
+            // this might need to be removed. But usually, it works.
+            response_format: { type: "json_object" }, 
+            temperature: 0.7,
+            max_tokens: 150
+        });
 
-        const content = response.data.choices[0].message.content;
-        
-        // Parse JSON output
-        try {
-            const parsed = JSON.parse(content);
-            return { reply: parsed.reply, isScam: parsed.isScam };
-        } catch (e) {
-            // Fallback if model returns plain text
-            return { reply: content, isScam: false };
-        }
+        const content = response.choices[0].message.content;
+        return JSON.parse(content);
 
     } catch (error) {
-        logger.warn(`FastRouter Failed: ${error.message}. Switching to Backup...`);
+        console.log("\n🛑 --- FASTROUTER FAILURE ---");
+        console.error(`❌ URL Used: ${FAST_ROUTER_BASE_URL}`);
+        
+        if (error.status === 404) {
+             console.error(`❌ Error 404: Endpoint not found.`);
+        } else if (error.status === 403) {
+             console.error(`❌ Error 403: Forbidden. Check if your API Key is valid for 'go.fastrouter.ai'.`);
+        } else {
+             console.error(`❌ Error: ${error.message}`);
+        }
+        console.log("-----------------------------\n");
         return null; // Trigger fallback
     }
 };
 
 /**
- * 🛡️ Secondary: OpenAI (Backup Classifier)
- * Used ONLY if FastRouter fails or logic is ambiguous.
+ * 🛡️ Secondary: OpenAI (Backup)
  */
 const fallbackOpenAI = async (apiKey, history, incomingMsg) => {
+    if (!apiKey) {
+        console.error("❌ OpenAI Fallback Failed: No API Key provided");
+        return null;
+    }
+
     const openai = new OpenAI({ apiKey: apiKey });
     
     try {
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini", // Cost effective backup
+            model: "gpt-4o-mini",
             messages: [
-                { role: "system", content: "You are a naive elderly victim. Reply naturally." },
+                // ✅ FIX: Added "Output JSON" to satisfy response_format requirement
+                { role: "system", content: "You are a naive elderly victim. Reply naturally in 1 short sentence. Output JSON." },
                 ...history.slice(-2),
                 { role: "user", content: incomingMsg }
             ],
-            max_tokens: 60
+            max_tokens: 60,
+            response_format: { type: "json_object" } 
         });
         
-        // Simple heuristic for scam detection in fallback mode
-        const isScam = /urgent|verify|block|otp/i.test(incomingMsg);
-        
-        return { 
-            reply: completion.choices[0].message.content, 
-            isScam: isScam 
-        };
+        const content = completion.choices[0].message.content;
+        return JSON.parse(content);
 
     } catch (e) {
-        logger.error(`OpenAI Backup Failed: ${e.message}`);
-        return { reply: "I am having trouble hearing you. Can you text later?", isScam: false };
+        console.log("\n🔥 --- OPENAI BACKUP FAILED ---");
+        console.error(`Message: ${e.message}`);
+        // Specific error handling for the "JSON" keyword issue
+        if (e.message.includes("'json' in some form")) {
+            console.error("👉 FIX: The system prompt is missing the word 'JSON'.");
+        }
+        console.log("------------------------------\n");
+        
+        return { reply: "I am confused. Can you explain?", isScam: false };
     }
 };
 

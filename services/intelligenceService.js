@@ -9,8 +9,10 @@ const PATTERNS = {
     // UPI: username@bank
     upiId: /[a-zA-Z0-9._\-]{2,256}@[a-zA-Z]{2,64}/g,
     
-    // Phone: Matches +91-98... or 98...
-    // Negative lookbehind (?<!\d) ensures we don't grab part of a longer number
+    // Phone: Handles:
+    // +91-9876543210 (Dash)
+    // +91 9876543210 (Space)
+    // 9876543210 (Plain)
     phone: /(?<!\d)(?:\+91|91)?[\-\s]?[6-9]\d{9}\b/g,
     
     // Links
@@ -27,10 +29,10 @@ const extract = (text) => {
     let bankAccounts = cleanText.match(PATTERNS.bankAccount) || [];
     const phoneNumbers = cleanText.match(PATTERNS.phone) || [];
     
-    // 🧹 CLEANUP: If a "Bank Account" looks like a Phone Number (10 digits starting with 6-9), remove it.
-    // This fixes the issue where "9876543210" appears in both lists.
+    // 🧹 CLEANUP: Separate Bank Accounts from Phone Numbers
     bankAccounts = bankAccounts.filter(acc => {
-        const isMobileLike = /^[6-9]\d{9}$/.test(acc);
+        // If it looks like a mobile number (10 digits, starts 6-9), discard it from bank list
+        const isMobileLike = /^[6-9]\d{9}$/.test(acc.replace(/\D/g, ''));
         return !isMobileLike;
     });
 

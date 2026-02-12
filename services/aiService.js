@@ -4,8 +4,8 @@ const logger = require('../utils/logger');
 require('dotenv').config();
 
 // CONFIG
-const FAST_MODEL = "meta-llama/llama-3.1-8b-instruct:free"; 
-const FAST_ROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const FAST_MODEL = "meta-llama/llama-3.1-8b-instant"; 
+const FAST_ROUTER_URL = "https://go.fastrouter.ai/api/v1";
 
 /**
  * 🚀 Primary: FastRouter (Llama-3)
@@ -42,7 +42,7 @@ OUTPUT FORMAT (STRICT JSON ONLY):
         const response = await axios.post(
             FAST_ROUTER_URL,
             {
-                model: FAST_MODEL,
+                model: "meta-llama/llama-3.1-8b-instant",
                 messages: messages,
                 response_format: { type: "json_object" }, // Force JSON if supported, else prompt injects it
                 temperature: 0.7,
@@ -84,7 +84,7 @@ const fallbackOpenAI = async (apiKey, history, incomingMsg) => {
     
     try {
         const completion = await openai.chat.completions.create({
-            model: "meta-llama/llama-3.1-8b-instant", // Cost effective backup
+            model: "gpt-4o-mini", // Cost effective backup
             messages: [
                 { role: "system", content: "You are a naive elderly victim. Reply naturally." },
                 ...history.slice(-2),

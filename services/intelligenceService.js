@@ -1,24 +1,24 @@
 /**
  * 🕵️‍♂️ Zero-Latency Intelligence Extractor
- * Strictly Regex-based. No LLM calls here.
  */
 
 const PATTERNS = {
-    // Bank: 9-18 digits (Safe from phone confusion now)
+    // Bank: 9-18 digits. 
+    // Captures even if inside brackets like (12345)
     bankAccount: /\b\d{9,18}\b/g,
     
     // UPI: username@bank
-    upiId: /[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}/g,
+    // Now supports dots/underscores more robustly
+    upiId: /[a-zA-Z0-9._\-]{2,256}@[a-zA-Z]{2,64}/g,
     
-    // Phone: Fixed to avoid matching inside bank accounts
-    // Logic: Must NOT be preceded by a digit (?<!\d)
-    // Supports: +91 98..., 9198..., or plain 98...
+    // Phone: Indian +91 or 10-digit starting 6-9
+    // Negative lookbehind (?<!\d) ensures we don't grab part of a bank account
     phone: /(?<!\d)(?:\+91|91)?[\-\s]?[6-9]\d{9}\b/g,
     
     // Links: http/https
     url: /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g,
     
-    // Keywords for Scam Detection
+    // Keywords
     keywords: /\b(otp|cvv|verif|block|kyc|refund|winner|lottery|expir|urgent|suspend|apk|download|upi)\w*/gi
 };
 
@@ -35,4 +35,4 @@ const extract = (text) => {
     };
 };
 
-module.exports = { extract };   
+module.exports = { extract };

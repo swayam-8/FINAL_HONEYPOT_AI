@@ -9,13 +9,13 @@ const logger = require('../utils/logger');
 const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
 
     // 0. DEBUG: Log receipt only (Privacy)
-    logger.info(`📩 Processing message for Session: ${sessionId}`);
+    // logger.info(`📩 Processing message for Session: ${sessionId}`);
 
     // 1. Load or Create Session
     let session = await Session.findOne({ sessionId });
 
     if (!session) {
-        logger.info(`✨ Creating NEW Session: ${sessionId}`);
+        // logger.info(`✨ Creating NEW Session: ${sessionId}`);
         session = new Session({ sessionId, history: [] });
 
         // Hydrate history & UPDATE COUNT
@@ -66,7 +66,7 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
                 const unique = [...new Set(combined)];
 
                 if (unique.length > session.intelligence[k].length) {
-                    logger.info(`🔍 New ${k} Found: ${JSON.stringify(intel[k])}`);
+                    // logger.info(`🔍 New ${k} Found: ${JSON.stringify(intel[k])}`);
                     foundNewIntel = true;
                 }
                 session.intelligence[k] = unique;
@@ -90,10 +90,10 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     session.history.push({ role: "assistant", content: reply });
 
     // ✅ DEBUG LOG (Redacted)
-    logger.info(`🤖 AI Reply Generated | Scam Detected: ${isScam}`);
+    // logger.info(`🤖 AI Reply Generated | Scam Detected: ${isScam}`);
 
     // Log DB Update
-    logger.info(`📝 Updating Database for Session ${sessionId} (Total Msgs: ${session.totalMessagesExchanged})`);
+    // logger.info(`📝 Updating Database for Session ${sessionId} (Total Msgs: ${session.totalMessagesExchanged})`);
 
     if (isScam) {
         session.scamDetected = true;
@@ -114,7 +114,7 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     if (session.scamDetected) {
         // Only schedule if we found something actionable or conversation is mature
         if (hasHardIntel || isMature) {
-            logger.info(`⏰ Scheduling Delayed Report for ${sessionId}...`);
+            // logger.info(`⏰ Scheduling Delayed Report for ${sessionId}...`);
             reportScheduler.scheduleReport(sessionId);
         }
     }

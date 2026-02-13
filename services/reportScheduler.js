@@ -12,9 +12,9 @@ const scheduleReport = (sessionId) => {
     // 1. Clear existing timeout if any (debounce)
     if (timeouts[sessionId]) {
         clearTimeout(timeouts[sessionId]);
-        logger.info(`⏳ Resetting report timer for Session: ${sessionId}`);
+        // logger.info(`⏳ Resetting report timer for Session: ${sessionId}`);
     } else {
-        logger.info(`⏰ Scheduling Report for ${sessionId} in ${REPORT_DELAY_MS / 1000}s...`);
+        // logger.info(`⏰ Scheduling Report for ${sessionId} in ${REPORT_DELAY_MS / 1000}s...`);
     }
 
     // 2. Set new timeout
@@ -27,7 +27,7 @@ const triggerReport = async (sessionId) => {
     try {
         delete timeouts[sessionId]; // Cleanup
 
-        logger.info(`🚀 Timer Expired. Generating Final Report for ${sessionId}...`);
+        // logger.info(`🚀 Timer Expired. Generating Final Report for ${sessionId}...`);
 
         const session = await Session.findOne({ sessionId });
         if (!session) {
@@ -37,7 +37,7 @@ const triggerReport = async (sessionId) => {
 
         // Only report if scam was actually detected
         if (!session.scamDetected) {
-            logger.info(`ℹ️ Skipping report for ${sessionId} - No scam detected.`);
+            // logger.info(`ℹ️ Skipping report for ${sessionId} - No scam detected.`);
             return;
         }
 
@@ -47,7 +47,7 @@ const triggerReport = async (sessionId) => {
         if (success) {
             session.reportSent = true;
             await session.save();
-            logger.info(`✅ Report successfully sent and saved for ${sessionId}`);
+            // logger.info(`✅ Report successfully sent and saved for ${sessionId}`);
         } else {
             logger.warn(`⚠️ Report failed for ${sessionId}. Will not retry automatically.`);
         }

@@ -6,7 +6,7 @@ const logger = require('../utils/logger');
 const timeouts = {};
 
 // Delay in milliseconds (15 seconds)
-const REPORT_DELAY_MS = 15000;
+const REPORT_DELAY_MS = 5000;
 
 const scheduleReport = (sessionId) => {
     // 1. Clear existing timeout if any (debounce)

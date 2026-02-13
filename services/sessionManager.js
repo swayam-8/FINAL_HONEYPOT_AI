@@ -112,8 +112,11 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     // The reportScheduler will DEBOUNCE multiple triggers and send only after inactivity.
 
     if (session.scamDetected) {
-        // Only schedule if we found something actionable or conversation is mature
-        if (hasHardIntel || isMature) {
+        // Only schedule if we found ACTUAL EVIDENCE (keywords or hard intel)
+        // This prevents empty reports
+        const hasEvidence = hasHardIntel || (session.intelligence.suspiciousKeywords && session.intelligence.suspiciousKeywords.length > 0);
+
+        if (hasEvidence) {
             // logger.info(`⏰ Scheduling Delayed Report for ${sessionId}...`);
             reportScheduler.scheduleReport(sessionId);
         }

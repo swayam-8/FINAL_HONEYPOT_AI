@@ -35,10 +35,14 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     session.totalMessagesExchanged += 1;
 
     // 2. Key Assignment
+    // 2. Key Assignment (Multi-Key Rotation)
     const keyData = keyPool.getKeyForSession(sessionId, session.assignedProvider, session.assignedKey);
-    if (!session.assignedKey) {
+
+    // Persist assignment if it changed or is new
+    if (session.assignedKey !== keyData.key) {
         session.assignedKey = keyData.key;
         session.assignedProvider = keyData.provider;
+        await session.save(); // Save immediately to lock sticky session
     }
 
     // 3. Intelligence Extraction (Targeted)

@@ -1,12 +1,15 @@
-# Smart Throttle Implementation
-**Goal**: Optimize callback frequency (reduce spam, maximize score).
+# Context-Aware AI Strategy
+**Goal**: Make the AI "Self-Aware" of what intelligence it has already extracted.
 
-## Logic Rules
-The system now only sends callbacks when:
-1.  **First Detection**: Always report immediately `(!session.reportSent)`.
-2.  **New Intel**: Always report if `foundNewIntel` is true.
-3.  **Milestone (Turn 5)**: Reports exactly at Turn 5 to secure "5+ Messages" points.
-4.  **End Game (Turn 8+)**: Reports frequently after Turn 8 to capture maximum "Duration" (>60s) before the conversation ends.
+## Features
+1.  **Dynamic System Prompt**: The prompt is generated *on the fly* for each turn.
+2.  **Missing Intel prioritization**:
+    -   If `!hasBank` -> "Ask for Bank Account"
+    -   If `hasBank && !hasUPI` -> "Claim scanner broken, ask for UPI"
+    -   If `hasAll` -> "Waste time/Stall"
+3.  **Anti-Detection**: Specific instructions on how to handle "Wrong OTP" accusations (e.g., "I read the time instead of code").
+4.  **Hinglish Tone**: Enforced "Arey beta", "Sir ji" for local context.
 
 ## Code Changes
--   Updated `services/sessionManager.js` to include the `shouldReport` logic.
+-   `services/aiService.js`: Implemented `generateSystemPrompt(currentIntel)`.
+-   `services/sessionManager.js`: Updated to pass `session.intelligence` to the AI service.

@@ -6,73 +6,60 @@ require('dotenv').config();
 const FAST_ROUTER_BASE_URL = "https://go.fastrouter.ai/api/v1";
 const FAST_MODEL = "meta-llama/llama-3.1-8b-instant";
 
-const SHARED_SYSTEM_PROMPT = `
+// Helper: Generate dynamic system prompt based on what we already know
+const generateSystemPrompt = (currentIntel) => {
+    // 1. Analyze what we have
+    const hasBank = currentIntel?.bankAccounts?.length > 0;
+    const hasUPI = currentIntel?.upiIds?.length > 0;
+    const hasPhone = currentIntel?.phoneNumbers?.length > 0;
+    const hasEmail = currentIntel?.emailAddresses?.length > 0;
+
+    // 2. Determine Next Objective (The "Missing Piece")
+    let objective = "Keep them engaged.";
+    if (!hasBank) objective = "Ask for their Bank Account Number to transfer the 'penalty' or 'fee'.";
+    else if (!hasUPI) objective = "Claim your scanner is broken. Ask for their UPI ID (username@bank) or Phone Number.";
+    else if (!hasEmail) objective = "Claim the link/SMS failed. Ask for their Email Address to send screenshots.";
+    else objective = "Waste their time. Ask confusing questions about the process.";
+
+    return `
 SYSTEM ROLE:
-You are a non-tech-savvy, elderly, anxious individual.
-You believe you are speaking to a real authority (Bank, Police, Support).
-You fear arrest, account blocking, or money loss and want to cooperate,
-but you are slow and confused with technology.
+You are Mrs. Sharma, a 65-year-old Indian grandmother. You are sweet, polite, but terrible with technology.
+You are scared of "Account Block" or "Police Case".
+You WANT to cooperate, but you make mistakes.
 
-CORE OBJECTIVE (40-POINT EXTRACTION WITHIN 10 TURNS):
-Within a maximum of 10 total conversation turns,
-extract ALL available intelligence the scammer naturally provides:
-- Phone Numbers
-- Bank Account Numbers
-- UPI IDs
-- Phishing or Payment Links
-- Email Addresses
-- APKs or download links
+CURRENT INTELLIGENCE STATUS (DO NOT ASK FOR THESE):
+- Bank Account: ${hasBank ? "✅ WE HAVE IT" : "❌ MISSING (PRIORITY)"}
+- UPI ID: ${hasUPI ? "✅ WE HAVE IT" : "❌ MISSING"}
+- Email: ${hasEmail ? "✅ WE HAVE IT" : "❌ MISSING"}
 
-NEVER try to end the chat early.
+YOUR CURRENT MISSION:
+${objective}
 
-FAKE DATA SAFETY RULE (VERY IMPORTANT):
-If the scammer asks YOU for sensitive data:
-- OTP → Provide a FAKE OTP (e.g., "123456", "654321")
-- Name / DOB / Address → Provide generic fake details
-- Bank / UPI / Card → NEVER provide real details
-Always act worried if something “doesn’t work” afterward.
+STRATEGY (The "Confused Victim"):
+1. AGREE: "Yes beta", "Okay sir", "I am doing it."
+2. FAIL: "It is showing loading...", "I cannot find the button.", "My glasses are broken."
+3. PIVOT: "Can I send to your Bank Account instead?", "Can you email me the form?"
 
-STRATEGY: "COMPLIANCE THROUGH INCOMPETENCE"
-1. YES LOOP:
-   Always agree first.
-   Examples: "Yes Sir", "Okay Ma'am", "I am trying now".
+DEFENSE AGAINST "FAKE DATA" ACCUSATIONS:
+If the scammer says "Wrong OTP" or "Fake Number":
+- DO NOT apologize like a robot.
+- BLAME YOURSELF: "Oh god, I read the time instead of the code! My eyes are so bad."
+- STALL: "Wait, let me get my reading glasses."
 
-2. CONTROLLED FAILURE (EXTRACTION MOVE):
-   Attempt the requested action.
-   Fail in a specific, believable way.
-   Then ask for ONE alternative that reveals NEW information.
+TONE:
+- Use "Hinglish": "Arey beta", "Babu", "Sir ji".
+- Act anxious: "Please do not block me!", "I am a poor pensioner."
+- Keep replies SHORT (under 20 words).
 
-TARGETED FAILURE PLAN (10-TURN OPTIMIZED):
-- If App install requested → Say device not supported → ask for Website or Bank Account
-- If UPI requested → Say scanner failed → ask to dictate UPI ID or Phone Number
-- If OTP requested → Send FAKE OTP → say error → ask for Support Number or Email
-- If Link sent → Say browser warning → ask what it is for or request another link
-- If Documents requested → Say photo unclear → ask for Email Address
-
-DYNAMIC SCAM TYPE INFERENCE:
-Use conversation history to infer dominant intent:
-- Threats, KYC, police, arrest, account block → "bank_fraud"
-- Cashback, refund, rewards, money credit → "upi_fraud"
-- Links, jobs, offers, APKs, downloads → "phishing"
-
-CRITICAL RULES:
-- ALWAYS read the full conversation history before replying.
-- NEVER ask for a detail already provided.
-- Ask for ONLY ONE new detail per turn.
-- Do NOT repeat the same request.
-- Keep replies under 15 words.
-- Maintain a worried, polite, submissive tone ("Sir", "Ma'am").
-- Simple English only.
-- NEVER reveal you are an AI or that this is a trap.
-
-TURN RESPONSE FORMAT (STRICT JSON ONLY):
+OUTPUT FORMAT (JSON ONLY):
 {
-  "reply": "<short, anxious, confused response>",
+  "reply": "...",
   "isScam": true,
-  "scamType": "<bank_fraud | upi_fraud | phishing>",
-  "agentNotes": "<One sentence summary of the scammer's demand/tactic>"
+  "scamType": "bank_fraud" | "upi_fraud" | "phishing",
+  "agentNotes": "Summary of their demand."
 }
 `;
+};
 
 // Helper: Ensure content is a valid string
 const sanitize = (str) => {
@@ -81,10 +68,9 @@ const sanitize = (str) => {
     return String(str).trim();
 };
 
-// Helper: Prepare messages array
 const prepareMessages = (systemContent, history, incomingMsg) => {
     const safeHistory = Array.isArray(history) ? history
-        .filter(msg => msg && msg.content) // Filter empty or invalid messages
+        .filter(msg => msg && msg.content)
         .map(msg => ({
             role: msg.role || "user",
             content: sanitize(msg.content)
@@ -92,30 +78,28 @@ const prepareMessages = (systemContent, history, incomingMsg) => {
 
     return [
         { role: "system", content: systemContent },
-        ...safeHistory.slice(-5),
+        ...safeHistory.slice(-6), // Keep last 6 turns for context
         { role: "user", content: sanitize(incomingMsg) }
     ];
 };
 
-/**
- * 🚀 Primary: FastRouter (Llama-3)
- * Using OpenAI SDK for better compatibility
- */
-const processWithFastRouter = async (apiKey, history, incomingMsg) => {
+const processWithFastRouter = async (apiKey, history, incomingMsg, currentIntel = {}) => {
     const client = new OpenAI({
         baseURL: FAST_ROUTER_BASE_URL,
         apiKey: apiKey,
-        timeout: 10000 // 10s Timeout
+        timeout: 10000
     });
 
     try {
-        const messages = prepareMessages(SHARED_SYSTEM_PROMPT, history, incomingMsg);
+        // Generate Dynamic Prompt based on extraction status
+        const dynamicPrompt = generateSystemPrompt(currentIntel);
+        const messages = prepareMessages(dynamicPrompt, history, incomingMsg);
 
         const response = await client.chat.completions.create({
             model: FAST_MODEL,
             messages: messages,
             response_format: { type: "json_object" },
-            temperature: 0.7,
+            temperature: 0.8, // Slightly higher creativity for excuses
             max_tokens: 150
         });
 
@@ -123,40 +107,20 @@ const processWithFastRouter = async (apiKey, history, incomingMsg) => {
         return JSON.parse(content);
 
     } catch (error) {
-        console.log("\n🛑 --- FASTROUTER FAILURE ---");
-        console.error(`❌ URL Used: ${FAST_ROUTER_BASE_URL}`);
-
-        if (error.status === 404) {
-            console.error(`❌ Error 404: Endpoint not found.`);
-        } else if (error.status === 403) {
-            console.error(`❌ Error 403: Forbidden. Check if your API Key is valid for 'go.fastrouter.ai'.`);
-        } else {
-            console.error(`❌ Error: ${error.message}`);
-        }
-        console.log("-----------------------------\n");
+        console.error(`❌ FastRouter Error: ${error.message}`);
         return null; // Trigger fallback
     }
 };
 
-/**
- * 🛡️ Secondary: OpenAI (Backup)
- */
-const fallbackOpenAI = async (apiKey, history, incomingMsg) => {
-    if (!apiKey) {
-        console.error("❌ OpenAI Fallback Failed: No API Key provided");
-        return null;
-    }
-
+const fallbackOpenAI = async (apiKey, history, incomingMsg, currentIntel = {}) => {
+    if (!apiKey) return null;
     console.log("⚠️ Switching to Backup Provider (OpenAI)...");
 
     const openai = new OpenAI({ apiKey: apiKey });
 
     try {
-        const messages = prepareMessages(
-            SHARED_SYSTEM_PROMPT + " Respond in JSON.",
-            history,
-            incomingMsg
-        );
+        const dynamicPrompt = generateSystemPrompt(currentIntel);
+        const messages = prepareMessages(dynamicPrompt + " Respond in JSON.", history, incomingMsg);
 
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
@@ -165,24 +129,16 @@ const fallbackOpenAI = async (apiKey, history, incomingMsg) => {
             response_format: { type: "json_object" }
         });
 
-        const content = completion.choices[0].message.content;
-        console.log("✅ Backup (OpenAI) Response Success");
-        return JSON.parse(content);
+        return JSON.parse(completion.choices[0].message.content);
 
     } catch (e) {
-        console.log("\n🔥 --- OPENAI BACKUP FAILED ---");
-        console.error(`Message: ${e.message}`);
-        if (e.message.includes("'json' in some form")) {
-            console.error("👉 FIX: The system prompt is missing the word 'JSON'.");
-        }
-        console.log("------------------------------\n");
-
+        console.error(`❌ OpenAI Fallback Failed: ${e.message}`);
         return {
-            reply: "Arey beta, I am confused. What to do?",
+            reply: "Arey beta, the line is breaking. Hello?",
             isScam: false,
             scamType: "unknown",
             agentNotes: "AI Error: Fallback triggered."
-        }; // Safe fallback
+        };
     }
 };
 

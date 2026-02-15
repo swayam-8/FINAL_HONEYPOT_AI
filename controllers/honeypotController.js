@@ -10,9 +10,9 @@ exports.processMessage = async (req, res) => {
             return res.status(400).json({ error: "Invalid Payload" });
         }
 
-        // ⏱️ 4.5s Hard Timeout Protection
+        // ⏱️ 15s Hard Timeout Protection (Accommodates 3-6s delay + AI time)
         const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), 4500)
+            setTimeout(() => reject(new Error("Timeout")), 15000)
         );
 
         // ✅ FIXED: Pass history to the manager

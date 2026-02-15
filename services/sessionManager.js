@@ -109,13 +109,24 @@ const handleSession = async (sessionId, incomingText, incomingHistory = [], inco
     if (foundNewIntel) session.markModified('intelligence');
     session.markModified('history');
 
-    // 6. Callback Logic
+    // 6. Callback Logic (Smart Update)
     const hardIntelTypes = ['bankAccounts', 'upiIds', 'phoneNumbers', 'phishingLinks', 'emailAddresses'];
     const hasHardIntel = hardIntelTypes.some(k => session.intelligence[k] && session.intelligence[k].length > 0);
 
     if (session.scamDetected) {
+        // Evidence Check
         const hasEvidence = hasHardIntel || (session.intelligence.suspiciousKeywords && session.intelligence.suspiciousKeywords.length > 0);
-        if (hasEvidence) {
+
+        // 🧠 SMART THROTTLE STRATEGY (Optimization)
+        // We don't need to report every single second. We only report when it INCREASES OUR SCORE.
+        const shouldReport =
+            !session.reportSent ||         // 1. Always report the FIRST detection immediately.
+            foundNewIntel ||               // 2. Always report if we found NEW Data (Bank, UPI, etc).
+            session.turnCount === 5 ||     // 3. Report at Turn 5 (Secures "5+ Messages" points).
+            session.turnCount >= 8;        // 4. Report frequently at the end (Turn 8+) to capture max Duration (>60s).
+
+        if (hasEvidence && shouldReport) {
+            // logger.info(`🚀 Smart Report Triggered: Turn ${session.turnCount} | New Intel: ${foundNewIntel}`);
             reportScheduler.scheduleReport(sessionId);
         }
     }

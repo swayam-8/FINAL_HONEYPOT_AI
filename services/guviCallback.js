@@ -2,19 +2,27 @@ const axios = require('axios');
 const logger = require('../utils/logger');
 
 const sendReport = async (session) => {
+    // Calculate Duration
+    const startTime = new Date(session.startTime).getTime();
+    const endTime = new Date(session.lastMessageTime).getTime();
+    const durationSeconds = Math.max(0, Math.floor((endTime - startTime) / 1000));
+
     const payload = {
-        sessionId: session.sessionId,
+        status: "success",
         scamDetected: session.scamDetected,
-        totalMessagesExchanged: session.turnCount,
+        scamType: session.scamType || "unknown",
         extractedIntelligence: {
-            bankAccounts: session.intelligence.bankAccounts,
-            upiIds: session.intelligence.upiIds,
-            phishingLinks: session.intelligence.phishingLinks,
-            phoneNumbers: session.intelligence.phoneNumbers,
-            emails: session.intelligence.emails, // ✅ NEW
-            suspiciousKeywords: session.intelligence.suspiciousKeywords
+            phoneNumbers: session.intelligence.phoneNumbers || [],
+            bankAccounts: session.intelligence.bankAccounts || [],
+            upiIds: session.intelligence.upiIds || [],
+            phishingLinks: session.intelligence.phishingLinks || [],
+            emailAddresses: session.intelligence.emailAddresses || [] // Note: Doc says 'emailAddresses'
         },
-        agentNotes: `Scam detected. Risk: ${session.riskScore}.`
+        engagementMetrics: {
+            totalMessagesExchanged: session.turnCount,
+            engagementDurationSeconds: durationSeconds
+        },
+        agentNotes: session.agentNotes || `Scam detected. Risk: ${session.riskScore}.`
     };
 
     try {

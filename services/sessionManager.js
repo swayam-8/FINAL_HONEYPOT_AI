@@ -6,7 +6,9 @@ const intelService = require('./intelligenceService');
 const guviCallback = require('./guviCallback');
 const logger = require('../utils/logger');
 
-const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
+const handleSession = async (sessionId, incomingText, incomingHistory = [], incomingTimestamp = null) => {
+
+    const msgTime = incomingTimestamp ? new Date(incomingTimestamp) : new Date();
 
     // 0. DEBUG: Log receipt only (Privacy)
     // logger.info(`📩 Processing message for Session: ${sessionId}`);
@@ -16,7 +18,11 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
 
     if (!session) {
         // logger.info(`✨ Creating NEW Session: ${sessionId}`);
-        session = new Session({ sessionId, history: [] });
+        session = new Session({
+            sessionId,
+            history: [],
+            startTime: msgTime // Phase 3: Initialize Start Time
+        });
 
         // Hydrate history & UPDATE COUNT
         if (incomingHistory.length > 0) {
@@ -27,14 +33,14 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
                 });
             });
             session.turnCount += incomingHistory.length;
-            session.totalMessagesExchanged += incomingHistory.length; // Update total count
+            session.totalMessagesExchanged += incomingHistory.length;
         }
     }
 
-    // Update total messages for current turn
+    // Phase 3: Update Timing Metrics
+    session.lastMessageTime = msgTime; // Update Last Active
     session.totalMessagesExchanged += 1;
 
-    // 2. Key Assignment
     // 2. Key Assignment (Multi-Key Rotation)
     const keyData = keyPool.getKeyForSession(sessionId, session.assignedProvider, session.assignedKey);
 
@@ -46,12 +52,10 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     }
 
     // 3. Intelligence Extraction (Targeted)
-    // ✅ FIX: Only scan "user" (scammer) messages. Ignore "assistant" (Honeypot).
     const textsToScan = [incomingText];
 
     if (incomingHistory.length > 0) {
         incomingHistory.forEach(msg => {
-            // Only add if it came from the scammer
             if (msg.sender === 'scammer' || msg.role === 'user') {
                 textsToScan.push(msg.text);
             }
@@ -63,14 +67,12 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
         const intel = intelService.extract(text);
         Object.keys(intel).forEach(k => {
             if (intel[k].length > 0) {
-                // Ensure array exists (backward compatibility)
                 if (!session.intelligence[k]) session.intelligence[k] = [];
 
                 const combined = [...session.intelligence[k], ...intel[k]];
                 const unique = [...new Set(combined)];
 
                 if (unique.length > session.intelligence[k].length) {
-                    // logger.info(`🔍 New ${k} Found: ${JSON.stringify(intel[k])}`);
                     foundNewIntel = true;
                 }
                 session.intelligence[k] = unique;
@@ -79,7 +81,7 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     });
 
     // 4. Update History
-    session.history.push({ role: "user", content: incomingText });
+    session.history.push({ role: "user", content: incomingText, timestamp: msgTime });
     session.turnCount += 1;
 
     // 5. AI Processing
@@ -90,14 +92,17 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
         aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText);
     }
 
-    const { reply, isScam } = aiResult;
-    session.history.push({ role: "assistant", content: reply });
+    const { reply, isScam, scamType, agentNotes } = aiResult;
+    session.history.push({ role: "assistant", content: reply, timestamp: new Date() });
 
-    // ✅ DEBUG LOG (Redacted)
-    // logger.info(`🤖 AI Reply Generated | Scam Detected: ${isScam}`);
-
-    // Log DB Update
-    // logger.info(`📝 Updating Database for Session ${sessionId} (Total Msgs: ${session.totalMessagesExchanged})`);
+    // Phase 3: Save AI Analysis
+    // ✅ FIX: Save AI Analysis to Session independently of isScam flag
+    if (scamType && scamType !== 'unknown') {
+        session.scamType = scamType;
+    }
+    if (agentNotes) {
+        session.agentNotes = agentNotes;
+    }
 
     if (isScam) {
         session.scamDetected = true;
@@ -108,12 +113,8 @@ const handleSession = async (sessionId, incomingText, incomingHistory = []) => {
     session.markModified('history');
 
     // 6. Callback Logic (Live Updates)
-    const hardIntelTypes = ['bankAccounts', 'upiIds', 'phoneNumbers', 'phishingLinks', 'emails']; // ✅ Added emails
+    const hardIntelTypes = ['bankAccounts', 'upiIds', 'phoneNumbers', 'phishingLinks', 'emailAddresses']; // ✅ Renamed for compliance
     const hasHardIntel = hardIntelTypes.some(k => session.intelligence[k] && session.intelligence[k].length > 0);
-    const isMature = session.turnCount >= 2;
-
-    // 6. Callback Logic (Delayed Reporting)
-    // The reportScheduler will DEBOUNCE multiple triggers and send only after inactivity.
 
     if (session.scamDetected) {
         // Only schedule if we found ACTUAL EVIDENCE (keywords or hard intel)

@@ -11,12 +11,12 @@ exports.processMessage = async (req, res) => {
         }
 
         // ⏱️ 4.5s Hard Timeout Protection
-        const timeout = new Promise((_, reject) => 
+        const timeout = new Promise((_, reject) =>
             setTimeout(() => reject(new Error("Timeout")), 4500)
         );
 
         // ✅ FIXED: Pass history to the manager
-        const processing = sessionManager.handleSession(sessionId, message.text, conversationHistory || []);
+        const processing = sessionManager.handleSession(sessionId, message.text, conversationHistory || [], message.timestamp);
 
         const reply = await Promise.race([processing, timeout]);
 
@@ -27,7 +27,7 @@ exports.processMessage = async (req, res) => {
 
     } catch (error) {
         logger.error(`Controller Error: ${error.message}`);
-        
+
         // Fail-safe response
         res.status(200).json({
             status: "success",

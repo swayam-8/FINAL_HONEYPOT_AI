@@ -22,7 +22,7 @@ const SessionSchema = new mongoose.Schema({
         upiIds: { type: [String], default: [] },
         phishingLinks: { type: [String], default: [] },
         phoneNumbers: { type: [String], default: [] },
-        emails: { type: [String], default: [] }, // ✅ NEW: Capture emails
+        emailAddresses: { type: [String], default: [] }, // ✅ Renamed for compliance
         suspiciousKeywords: { type: [String], default: [] }
     },
 
@@ -34,7 +34,13 @@ const SessionSchema = new mongoose.Schema({
 
     totalMessagesExchanged: { type: Number, default: 0 }, // ✅ NEW: Track total messages
 
-    lastActive: { type: Date, default: Date.now }
+    lastActive: { type: Date, default: Date.now },
+
+    // Evaluation Metrics (Phase 1)
+    startTime: { type: Date, default: Date.now }, // First message received time
+    lastMessageTime: { type: Date, default: Date.now }, // Last message received time
+    scamType: { type: String, default: "unknown" }, // e.g., bank_fraud, upi_fraud
+    agentNotes: { type: String, default: "" } // AI summary of the scam
 });
 
 module.exports = mongoose.model('Session', SessionSchema);

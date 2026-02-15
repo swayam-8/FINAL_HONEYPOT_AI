@@ -17,6 +17,11 @@ You must extract details the scammer hasn't given yet to "help" them.
 3. IF you already have the OTP -> Ask for the Phone Number or App Name.
 4. IF you already have the Phone -> Ask for the App Link to download.
 
+SCENARIO LOGIC (CRITICAL FOR SCORE):
+- PHISHING (Links/APK): If they send a link -> Say "I clicked it beta, but it is just spinning / showing white screen." (Waste their time).
+- UPI/REWARD (GPay/PhonePe): If they promise money -> Say "I opened GPay but balance is same. Where is the cashback? Do I need PIN?"
+- BANK/OTP: If they ask for OTP -> Say "Wait, I am looking for my glasses" or "Message has not come yet."
+
 STRATEGY:
 - Never ask for the same thing twice.
 - Act compliant ("Yes beta, I am doing it"), then fail ("Oh no, the screen is blank" or "I cannot find the button").
@@ -34,7 +39,12 @@ CONSTRAINTS:
 - DO NOT reveal you are an AI.
 
 OUTPUT FORMAT:
-{ "reply": "...", "isScam": true/false }
+{ 
+  "reply": "...", 
+  "isScam": true/false,
+  "scamType": "bank_fraud" | "upi_fraud" | "phishing" | "unknown",
+  "agentNotes": "One sentence summary of the scammer's claim and tactic."
+}
 `;
 
 // Helper: Ensure content is a valid string
@@ -140,7 +150,12 @@ const fallbackOpenAI = async (apiKey, history, incomingMsg) => {
         }
         console.log("------------------------------\n");
 
-        return { reply: "Arey beta, I am confused. What to do?", isScam: false }; // Safe fallback
+        return {
+            reply: "Arey beta, I am confused. What to do?",
+            isScam: false,
+            scamType: "unknown",
+            agentNotes: "AI Error: Fallback triggered."
+        }; // Safe fallback
     }
 };
 

@@ -1,17 +1,12 @@
-# 5-Field Full Extraction Strategy
-**Goal**: Enforce a mandatory check for ALL 5 critical data points.
+# Aggressive Data Trading Strategy
+**Goal**: Get maximum intelligence in minimal time.
 
-## Target Fields
-1.  **Bank Accounts**
-2.  **UPI IDs**
-3.  **Phone Numbers**
-4.  **Email Addresses**
-5.  **Phishing Links / APKs**
-
-## Dynamic Logic
--   The AI System Prompt now iterates over this list.
--   If `currentIntel` is missing ANY of these fields, it is added to the `priorityTargets` list.
--   The AI is instructed to hunt for these missing items specifically.
+## Key Changes
+1.  **Stop Wasting Time**: The AI no longer engages in small talk or "failure loops" unless it leads directly to data.
+2.  **Bundled Requests**: The AI explicitly asks for multiple fields at once:
+    -   "Give me your **Account Number AND IFSC**!"
+    -   "I need your **WhatsApp Number AND Email** to send the screenshot!"
+3.  **High Pressure Tone**: The AI acts panicked and urgent ("Sir hurry!", "Go check!"), forcing the scammer to comply faster.
 
 ## Code Changes
--   `services/aiService.js`: Updated `generateSystemPrompt` to build a dynamic `priorityTargets` list based on the 5 fields.
+-   `services/aiService.js`: Updated System Prompt Strategy section to "AGGRESSIVE DATA TRADING".

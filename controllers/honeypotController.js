@@ -35,3 +35,23 @@ exports.processMessage = async (req, res) => {
         });
     }
 };
+
+const guviCallback = require('../services/guviCallback');
+const Session = require('../models/Session');
+
+exports.getCallbackPreview = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const session = await Session.findOne({ sessionId });
+
+        if (!session) {
+            return res.status(404).json({ error: "Session not found" });
+        }
+
+        const payload = guviCallback.generatePayload(session);
+        res.json(payload);
+    } catch (error) {
+        logger.error(`Preview Error: ${error.message}`);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};

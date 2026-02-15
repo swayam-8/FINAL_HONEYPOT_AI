@@ -1,13 +1,11 @@
-# Phase 2.5: Intelligence Service Upgrade
-**Goal**: Correct extraction logic for Hackathon Evaluation.
+# Swagger Documentation Update
+**Goal**: Ensure `api-docs` reflects the new preview endpoint.
 
 ## Changes
 
-### 1. Enhanced `services/intelligenceService.js`
--   **UPI/Email Separation**: Added logic to remove items detected as Emails from the UPI list (`upis.filter(u => !emails.includes(u))`). This prevents double-counting.
--   **Scam Classification (Regex Base)**: Added regex-based classification for `bank_fraud`, `upi_fraud`, and `phishing`. This acts as a robust first layer of classification alongside the AI.
--   **Compliance**: field `emailAddresses` is correctly used.
+### 1. `routes/apiRoutes.js`
+-   Added `@swagger` annotation for `GET /api/callback-preview/{sessionId}`.
+-   Documented input parameters (`sessionId`) and response schema.
 
 ## Why?
--   The evaluation system penalizes incorrect extraction.
--   We need to ensure we don't accidentally report an email as a UPI ID.
+-   Allows the user to interactively test the preview endpoint directly from the Swagger UI.

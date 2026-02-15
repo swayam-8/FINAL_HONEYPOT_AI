@@ -36,4 +36,30 @@ const controller = require('../controllers/honeypotController');
  */
 router.post('/honeypot', controller.processMessage);
 
+/**
+ * @swagger
+ * /api/callback-preview/{sessionId}:
+ *   get:
+ *     summary: Preview the callback payload for a session
+ *     description: Returns the exact JSON payload that would be sent to the callback URL. Useful for debugging 422 errors.
+ *     tags: [Honeypot]
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the session to preview
+ *     responses:
+ *       200:
+ *         description: The callback payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       404:
+ *         description: Session not found
+ */
+router.get('/callback-preview/:sessionId', controller.getCallbackPreview);
+
 module.exports = router;

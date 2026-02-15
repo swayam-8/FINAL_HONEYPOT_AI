@@ -1,10 +1,17 @@
-# AI Persona Upgrade: "Chaotic Compliance"
-**Goal**: Create a highly reactive AI that extracts data through "Helpful Failures".
+# 5-Field Full Extraction Strategy
+**Goal**: Enforce a mandatory check for ALL 5 critical data points.
 
-## Key Behaviors
-1.  **Dynamic Target List**: The AI now hunts for 4 specific data points depending on the scam type (Bank/UPI/Phishing).
-2.  **Chaotic Compliance**: Instead of simple "Failure" (e.g., "OTP invalid"), the AI now uses "Chaotic Failure" (e.g., "Screen flashed red!", "Playing loud music!").
-3.  **Anti-Repetition**: The prompt explicitly forbids re-asking for data we already have (`CURRENT INTELLIGENCE STATUS`).
+## Target Fields
+1.  **Bank Accounts**
+2.  **UPI IDs**
+3.  **Phone Numbers**
+4.  **Email Addresses**
+5.  **Phishing Links / APKs**
+
+## Dynamic Logic
+-   The AI System Prompt now iterates over this list.
+-   If `currentIntel` is missing ANY of these fields, it is added to the `priorityTargets` list.
+-   The AI is instructed to hunt for these missing items specifically.
 
 ## Code Changes
--   `services/aiService.js`: Replaced `generateSystemPrompt` logic with the new "Chaotic Compliance" strategy.
+-   `services/aiService.js`: Updated `generateSystemPrompt` to build a dynamic `priorityTargets` list based on the 5 fields.

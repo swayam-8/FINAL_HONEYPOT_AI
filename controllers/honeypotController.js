@@ -7,7 +7,7 @@ exports.processMessage = async (req, res) => {
         const { sessionId, message, conversationHistory } = req.body;
 
         if (!sessionId || !message || !message.text) {
-            return res.status(400).json({ error: "Invalid Payload" });
+            return res.status(200).json({ error: "Invalid Payload" });
         }
 
         // ⏱️ 15s Hard Timeout Protection (Accommodates 3-6s delay + AI time)
@@ -45,13 +45,13 @@ exports.getCallbackPreview = async (req, res) => {
         const session = await Session.findOne({ sessionId });
 
         if (!session) {
-            return res.status(404).json({ error: "Session not found" });
+            return res.status(200).json({ error: "Session not found" });
         }
 
         const payload = guviCallback.generatePayload(session);
         res.json(payload);
     } catch (error) {
         logger.error(`Preview Error: ${error.message}`);
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(200).json({ error: "Internal Server Error" });
     }
 };

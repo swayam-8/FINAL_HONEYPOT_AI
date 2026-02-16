@@ -1,5 +1,7 @@
 # 🦅 Agentic Honeypot AI (Hackathon Edition)
 
+![Honeypot Architecture](./diagram.png)
+
 A high-performance, compliant Honeypot system designed to engage scammers, extract intelligence, and report findings in real-time.
 
 ## 🚀 Key Features

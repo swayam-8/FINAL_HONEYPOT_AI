@@ -1,5 +1,6 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
+require('dotenv').config();
 
 const sendReport = async (session) => {
     // Calculate Duration
@@ -7,14 +8,15 @@ const sendReport = async (session) => {
     const endTime = new Date(session.lastMessageTime).getTime();
     let durationSeconds = Math.max(0, Math.floor((endTime - startTime) / 1000));
 
-    // Fallback: If duration is 0 but we have messages, default to minimal human delay (e.g. 5s per turn)
+    // Fallback: If duration is 0 but we have messages, default to minimal human delay
     if (durationSeconds === 0 && session.turnCount > 0) {
         durationSeconds = session.turnCount * 5;
     }
 
-    // 1. STRICT DISPLAY FORMAT (For Terminal Logs)
-    // This matches the PDF documentation exactly for your visual verification.
-    const logPayload = {
+    // STRICT PDF PAYLOAD [cite: 104-123]
+    // This matches the documentation structure exactly.
+    const payload = {
+        sessionId: session.sessionId, // Necessary to identify the session
         status: "success",
         scamDetected: session.scamDetected,
         scamType: session.scamType || "unknown",
@@ -32,21 +34,13 @@ const sendReport = async (session) => {
         agentNotes: session.agentNotes || `Scam detected. Risk: ${session.riskScore}.`
     };
 
-    // 2. SERVER COMPLIANT PAYLOAD (For API Call)
-    // This includes the root-level fields required to avoid the 422 Error.
-    const serverPayload = {
-        sessionId: session.sessionId, // Required by Server
-        ...logPayload,                // Includes all the nested data above
-        totalMessagesExchanged: session.turnCount,    // Root level (Required)
-        engagementDurationSeconds: durationSeconds    // Root level (Required)
-    };
+    const targetUrl = process.env.CALLBACK_URL || 'https://hackathon.guvi.in/api/updateHoneyPotFinalResult';
 
     try {
-        // ✅ Log the STRICT format you asked for
-        logger.info(`📤 Callback Data: ${JSON.stringify(logPayload, null, 2)}`);
+        logger.info(`📤 Sending Callback to ${targetUrl}`);
+        logger.info(`📄 Payload: ${JSON.stringify(payload, null, 2)}`);
 
-        // 🚀 Send the WORKING format to the server
-        const response = await axios.post('https://hackathon.guvi.in/api/updateHoneyPotFinalResult', serverPayload, {
+        const response = await axios.post(targetUrl, payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 5000
         });

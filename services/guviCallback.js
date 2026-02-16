@@ -31,7 +31,12 @@ const sendReport = async (session) => {
             totalMessagesExchanged: session.turnCount,
             engagementDurationSeconds: durationSeconds
         },
-        agentNotes: session.agentNotes || `Scam detected. Risk: ${session.riskScore}.`
+        agentNotes: session.agentNotes || `Scam detected. Risk: ${session.riskScore}.`,
+
+        // ROOT LEVEL METRICS (REQUIRED BY SERVER)
+        // Adding these back to avoid 422 Error
+        totalMessagesExchanged: session.turnCount,
+        engagementDurationSeconds: durationSeconds
     };
 
     const targetUrl = process.env.CALLBACK_URL || 'https://hackathon.guvi.in/api/updateHoneyPotFinalResult';

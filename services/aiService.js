@@ -46,6 +46,7 @@ Analyze the conversation and output the MOST ACCURATE scam type:
 - "investment_scam" (crypto, stocks, doubling money)
 - "lottery_scam" (won car, money, KBC)
 - "advance_fee_fraud" (processing fee, customs, gift)
+- "etc....."
 
 ### INTELLIGENCE MAPPING (CRITICAL FOR POINTS)
 We only have 5 buckets to store data. Map extracted info into the closest fit:

@@ -12,7 +12,7 @@ exports.processMessage = async (req, res) => {
 
         // ⏱️ 15s Hard Timeout Protection (Accommodates 3-6s delay + AI time)
         const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), 15000)
+            setTimeout(() => reject(new Error("Timeout")), 25000)
         );
 
         // ✅ FIXED: Pass history to the manager

@@ -133,9 +133,10 @@ const handleSession = async (sessionId, incomingText, incomingHistory = [], inco
 
     await session.save();
 
-    // ✅ FIX 2: Human-Like Delay (3 to 6 Seconds)
-    // This ensures we eat up time to hit the >60s goal, but stay safely under the 30s timeout.
-    const delay = Math.floor(Math.random() * 3000) + 3000; // Random between 3000ms and 6000ms
+    // ✅ FIX 2: Increased Human-Like Delay (7 to 12 Seconds)
+    // Goal: Hit >60s duration by Turn 6, while staying safely under the 30s timeout.
+    const delay = Math.floor(Math.random() * 5000) + 7000; // Random between 7000ms (7s) and 12000ms (12s)
+
     // logger.info(`⏳ Simulating typing delay of ${delay}ms...`);
     await new Promise(resolve => setTimeout(resolve, delay));
 

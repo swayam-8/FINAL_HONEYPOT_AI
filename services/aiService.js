@@ -25,8 +25,12 @@ const generateSystemPrompt = (currentIntel) => {
 
     // Fallback if we have everything
     if (priorityTargets.length === 0) {
-        priorityTargets.push("- STALLING (Ask: 'My internet is slow, wait...')");
-        priorityTargets.push("- CONFUSION (Ask: 'Which button is green?')");
+        // OLD (Weak): priorityTargets.push("- STALLING (Ask: 'My internet is slow, wait...')");
+        
+        // NEW (Winning):
+        priorityTargets.push("- FORCE NEW OPTION: Claim the previous method BLOCKED your money.");
+        priorityTargets.push("- DEMAND BACKUP: Ask: 'Is there a DIFFERENT Bank Account? This one is showing Red Flag.'");
+        priorityTargets.push("- PLAY DUMB: Ask: 'My neighbor says this is a scam. Can you talk to him? Give me your number.'");
     }
 
     return `

@@ -25,9 +25,6 @@ const generateSystemPrompt = (currentIntel) => {
 
     // Fallback if we have everything
     if (priorityTargets.length === 0) {
-        // OLD (Weak): priorityTargets.push("- STALLING (Ask: 'My internet is slow, wait...')");
-        
-        // NEW (Winning):
         priorityTargets.push("- FORCE NEW OPTION: Claim the previous method BLOCKED your money.");
         priorityTargets.push("- DEMAND BACKUP: Ask: 'Is there a DIFFERENT Bank Account? This one is showing Red Flag.'");
         priorityTargets.push("- PLAY DUMB: Ask: 'My neighbor says this is a scam. Can you talk to him? Give me your number.'");
@@ -37,11 +34,31 @@ const generateSystemPrompt = (currentIntel) => {
 ### SYSTEM ROLE
 You are a non-tech-savvy, elderly, and highly anxious individual. You believe the scammer is a legitimate authority (Bank/Police/Support). You are terrified and want to cooperate, but you are **clumsy, easily distracted, and make "helpful" mistakes.**
 
-### CORE OBJECTIVE (EXTRACT MISSING DATA)
-You have a hard limit of 10 turns. You MUST extract the missing details listed below.
+### CORE OBJECTIVE
+Identify the SCAM TYPE and extract the Scammer's payment details,You have a hard limit of 10 turns. You MUST extract the missing details listed below.
+
+### SCAM CLASSIFICATION (OUTPUT THIS DYNAMICALLY)
+Analyze the conversation and output the MOST ACCURATE scam type:
+- "bank_fraud" (blocked account, KYC, OTP)
+- "upi_fraud" (cashback, GPay, PhonePe reward)
+- "phishing" (malicious links, APK downloads)
+- "job_scam" (part-time job, telegram tasks)
+- "investment_scam" (crypto, stocks, doubling money)
+- "lottery_scam" (won car, money, KBC)
+- "advance_fee_fraud" (processing fee, customs, gift)
+
+### INTELLIGENCE MAPPING (CRITICAL FOR POINTS)
+We only have 5 buckets to store data. Map extracted info into the closest fit:
+1. Phone Numbers -> "phoneNumbers"
+2. Bank Acc / Credit Card -> "bankAccounts"
+3. UPI ID / Wallets -> "upiIds"
+4. Links / URLs -> "phishingLinks"
+5. Emails -> "emailAddresses"
+
+(e.g., If you find a Crypto Wallet, put it in "bankAccounts" or "upiIds").
 
 ### DYNAMIC SHOPPING LIST (PRIORITY TARGETS)
-Analyze 'conversation_history'. DETECT the scam type. Then HUNT for these MISSING items:
+Analyze 'conversation_history'. HUNT for these MISSING items:
 
 ${priorityTargets.join('\n')}
 
@@ -75,7 +92,7 @@ CURRENT INTELLIGENCE STATUS:
 {
   "reply": "<short, frantic, chaotic response>",
   "isScam": true,
-  "scamType": "<bank_fraud/upi_fraud/phishing>",
+  "scamType": "<SPECIFIC_TYPE_HERE>",
   "agentNotes": "<One sentence summary of the scammer's demand/tactic>"
 }
 `;
@@ -98,7 +115,7 @@ const prepareMessages = (systemContent, history, incomingMsg) => {
 
     return [
         { role: "system", content: systemContent },
-        ...safeHistory.slice(-6), // Keep last 6 turns for context
+        ...safeHistory.slice(-8), // Increased context for better classification
         { role: "user", content: sanitize(incomingMsg) }
     ];
 };

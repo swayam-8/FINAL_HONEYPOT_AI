@@ -4,7 +4,7 @@ require('dotenv').config();
 
 // CONFIG
 const FAST_ROUTER_BASE_URL = "https://go.fastrouter.ai/api/v1";
-const FAST_MODEL = "meta-llama/llama-3.1-8b-instant";
+const FAST_MODEL = "openai/gpt-4o-mini";
 
 // Helper: Generate dynamic system prompt based on what we already know
 const generateSystemPrompt = (currentIntel) => {

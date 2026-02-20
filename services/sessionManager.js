@@ -45,6 +45,7 @@ const handleSession = async (sessionId, incomingText, incomingHistory = [], inco
 
     // Update Timing Metrics
     session.lastMessageTime = msgTime;
+    session.lastActive = new Date(); // Reset TTL expiration timer
     session.totalMessagesExchanged += 1;
 
     // 2. Key Assignment

@@ -25,7 +25,10 @@ const sendReport = async (session) => {
             bankAccounts: session.intelligence.bankAccounts || [],
             upiIds: session.intelligence.upiIds || [],
             phishingLinks: session.intelligence.phishingLinks || [],
-            emailAddresses: session.intelligence.emailAddresses || []
+            emailAddresses: session.intelligence.emailAddresses || [],
+            caseIds: session.intelligence.caseIds || [],
+            policyNumbers: session.intelligence.policyNumbers || [],
+            orderNumbers: session.intelligence.orderNumbers || []
         },
         engagementMetrics: {
             totalMessagesExchanged: session.turnCount,

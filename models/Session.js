@@ -23,7 +23,10 @@ const SessionSchema = new mongoose.Schema({
         phishingLinks: { type: [String], default: [] },
         phoneNumbers: { type: [String], default: [] },
         emailAddresses: { type: [String], default: [] }, // ✅ Renamed for compliance
-        suspiciousKeywords: { type: [String], default: [] }
+        suspiciousKeywords: { type: [String], default: [] },
+        caseIds: { type: [String], default: [] },        // 🆕 ADDED
+        policyNumbers: { type: [String], default: [] },  // 🆕 ADDED
+        orderNumbers: { type: [String], default: [] }    // 🆕 ADDED
     },
 
     history: [{

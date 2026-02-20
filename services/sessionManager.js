@@ -87,20 +87,21 @@ const handleSession = async (sessionId, incomingText, incomingHistory = [], inco
     session.turnCount += 1;
 
     // 5. AI Processing
-    let aiResult = await aiService.processWithFastRouter(keyData.key, session.history, incomingText);
+    let aiResult = await aiService.processWithFastRouter(keyData.key, session.history, incomingText, session.intelligence);
 
     if (!aiResult) {
         const backupKey = (process.env.OPENAI_KEYS || "").split(',')[0];
-        aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText);
+        aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText, session.intelligence);
     }
 
-    const { reply, isScam, scamType, agentNotes } = aiResult;
+    const { reply, isScam, scamType, agentNotes, confidenceLevel } = aiResult;
     session.history.push({ role: "assistant", content: reply, timestamp: new Date() });
 
     // Save AI Analysis
     // ✅ FIX: Save AI Analysis to Session independently of isScam flag
     if (scamType && scamType !== 'unknown') session.scamType = scamType;
     if (agentNotes) session.agentNotes = agentNotes;
+    if (confidenceLevel) session.confidenceLevel = confidenceLevel; // 🆕 Save confidence level
 
     if (isScam) {
         session.scamDetected = true;

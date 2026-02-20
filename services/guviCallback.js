@@ -3,43 +3,33 @@ const logger = require('../utils/logger');
 require('dotenv').config();
 
 const sendReport = async (session) => {
-    // Calculate Duration
     const startTime = new Date(session.startTime).getTime();
     const endTime = new Date(session.lastMessageTime).getTime();
     let durationSeconds = Math.max(0, Math.floor((endTime - startTime) / 1000));
 
-    // Fallback: If duration is 0 but we have messages, default to minimal human delay
     if (durationSeconds === 0 && session.turnCount > 0) {
         durationSeconds = session.turnCount * 5;
     }
 
-    // STRICT PDF PAYLOAD [cite: 104-123]
-    // This matches the documentation structure exactly.
+    // 🏆 FINAL ROUND PDF COMPLIANT PAYLOAD
     const payload = {
-        sessionId: session.sessionId, // Necessary to identify the session
-        status: "success",
+        sessionId: session.sessionId,
         scamDetected: session.scamDetected,
+        totalMessagesExchanged: session.turnCount,
+        engagementDurationSeconds: durationSeconds,
         scamType: session.scamType || "unknown",
+        confidenceLevel: session.confidenceLevel || 0.90, // 🆕 New field added
         extractedIntelligence: {
             phoneNumbers: session.intelligence.phoneNumbers || [],
             bankAccounts: session.intelligence.bankAccounts || [],
             upiIds: session.intelligence.upiIds || [],
             phishingLinks: session.intelligence.phishingLinks || [],
             emailAddresses: session.intelligence.emailAddresses || [],
-            caseIds: session.intelligence.caseIds || [],
-            policyNumbers: session.intelligence.policyNumbers || [],
-            orderNumbers: session.intelligence.orderNumbers || []
+            caseIds: session.intelligence.caseIds || [],         // 🆕
+            policyNumbers: session.intelligence.policyNumbers || [], // 🆕
+            orderNumbers: session.intelligence.orderNumbers || []  // 🆕
         },
-        engagementMetrics: {
-            totalMessagesExchanged: session.turnCount,
-            engagementDurationSeconds: durationSeconds
-        },
-        agentNotes: session.agentNotes || `Scam detected. Risk: ${session.riskScore}.`,
-
-        // ROOT LEVEL METRICS (REQUIRED BY SERVER)
-        // Adding these back to avoid 422 Error
-        totalMessagesExchanged: session.turnCount,
-        engagementDurationSeconds: durationSeconds
+        agentNotes: session.agentNotes || "Scam detected based on conversation patterns."
     };
 
     const targetUrl = process.env.CALLBACK_URL || 'https://hackathon.guvi.in/api/updateHoneyPotFinalResult';
@@ -57,9 +47,6 @@ const sendReport = async (session) => {
         return true;
     } catch (error) {
         logger.error(`❌ CALLBACK FAILED: ${error.message}`);
-        if (error.response) {
-            logger.error(`Server Response: ${JSON.stringify(error.response.data)}`);
-        }
         return false;
     }
 };

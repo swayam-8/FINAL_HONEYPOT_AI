@@ -10,6 +10,7 @@ const SessionSchema = new mongoose.Schema({
     // State
     scamDetected: { type: Boolean, default: false },
     riskScore: { type: String, default: "LOW" },
+    confidenceLevel: { type: Number, default: 0 }, // 🆕 ADDED
     turnCount: { type: Number, default: 0 },
 
     // ✅ NEW: Track if we have already reported this session

@@ -3,8 +3,8 @@ const logger = require('../utils/logger');
 
 exports.processMessage = async (req, res) => {
     try {
-        // ✅ FIXED: Extract conversationHistory
-        const { sessionId, message, conversationHistory } = req.body;
+        // ✅ FIXED: Extract conversationHistory and metadata
+        const { sessionId, message, conversationHistory, metadata } = req.body;
 
         if (!sessionId || !message || !message.text) {
             return res.status(200).json({ error: "Invalid Payload" });
@@ -15,8 +15,14 @@ exports.processMessage = async (req, res) => {
             setTimeout(() => reject(new Error("Timeout")), 25000)
         );
 
-        // ✅ FIXED: Pass history to the manager
-        const processing = sessionManager.handleSession(sessionId, message.text, conversationHistory || [], message.timestamp);
+        // ✅ FIXED: Pass history and metadata to the manager
+        const processing = sessionManager.handleSession(
+            sessionId,
+            message.text,
+            conversationHistory || [],
+            message.timestamp,
+            metadata || {} // 🆕 Pass metadata
+        );
 
         const reply = await Promise.race([processing, timeout]);
 

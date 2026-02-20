@@ -6,7 +6,7 @@ const intelService = require('./intelligenceService');
 const guviCallback = require('./guviCallback');
 const logger = require('../utils/logger');
 
-const handleSession = async (sessionId, incomingText, incomingHistory = [], incomingTimestamp = null) => {
+const handleSession = async (sessionId, incomingText, incomingHistory = [], incomingTimestamp = null, metadata = {}) => {
 
     const msgTime = incomingTimestamp ? new Date(incomingTimestamp) : new Date();
 
@@ -87,11 +87,11 @@ const handleSession = async (sessionId, incomingText, incomingHistory = [], inco
     session.turnCount += 1;
 
     // 5. AI Processing
-    let aiResult = await aiService.processWithFastRouter(keyData.key, session.history, incomingText, session.intelligence);
+    let aiResult = await aiService.processWithFastRouter(keyData.key, session.history, incomingText, session.intelligence, metadata); // 🆕 Added metadata
 
     if (!aiResult) {
         const backupKey = (process.env.OPENAI_KEYS || "").split(',')[0];
-        aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText, session.intelligence);
+        aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText, session.intelligence, metadata); // 🆕 Added metadata
     }
 
     const { reply, isScam, scamType, agentNotes, confidenceLevel } = aiResult;

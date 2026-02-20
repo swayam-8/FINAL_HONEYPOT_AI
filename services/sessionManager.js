@@ -87,11 +87,12 @@ const handleSession = async (sessionId, incomingText, incomingHistory = [], inco
     session.turnCount += 1;
 
     // 5. AI Processing
-    let aiResult = await aiService.processWithFastRouter(keyData.key, session.history, incomingText, session.intelligence, metadata); // 🆕 Added metadata
+    // 🆕 Pass session.turnCount as the last argument
+    let aiResult = await aiService.processWithFastRouter(keyData.key, session.history, incomingText, session.intelligence, metadata, session.turnCount);
 
     if (!aiResult) {
         const backupKey = (process.env.OPENAI_KEYS || "").split(',')[0];
-        aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText, session.intelligence, metadata); // 🆕 Added metadata
+        aiResult = await aiService.fallbackOpenAI(backupKey, session.history, incomingText, session.intelligence, metadata, session.turnCount);
     }
 
     const { reply, isScam, scamType, agentNotes, confidenceLevel } = aiResult;

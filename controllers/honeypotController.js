@@ -10,9 +10,9 @@ exports.processMessage = async (req, res) => {
             return res.status(200).json({ error: "Invalid Payload" });
         }
 
-        // ⏱️ 15s Hard Timeout Protection (Accommodates 3-6s delay + AI time)
+        // ⏱️ 28s Hard Timeout Protection (Accommodates 19-23s delay + AI time)
         const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), 25000)
+            setTimeout(() => reject(new Error("Timeout")), 28000)
         );
 
         // ✅ FIXED: Pass history and metadata to the manager

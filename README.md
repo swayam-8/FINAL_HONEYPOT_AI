@@ -1,59 +1,67 @@
-# 🦅 Agentic Honeypot AI (Hackathon Edition)
+# Agentic Honeypot API (Hackathon Final Submission)
 
 ![Honeypot Architecture](./diagram.png)
 
-A high-performance, compliant Honeypot system designed to engage scammers, extract intelligence, and report findings in real-time.
+## Description
+This project is a high-performance, compliant Agentic Honeypot designed to detect scams, extract actionable intelligence, and realistically engage malicious actors. Our system utilizes a state-aware, multi-model AI architecture to simulate an elderly, technologically confused victim ("Mrs. Sharma"). By using psychological "Human Extraction Strategies" and channel-aware context, the honeypot safely prolongs the conversation, bypasses scammer suspicion, and aggressively extracts 8 different types of fraud intelligence, formatting it perfectly for the final evaluation system.
 
-## 🚀 Key Features
--   **Context-Aware AI Persona**: Acts as "Mrs. Sharma", a confused elderly victim, to extract data naturally.
--   **5-Field Intelligence Extraction**: Aggressively hunts for **Bank Accounts, UPI IDs, Phone Numbers, Emails, and Phishing Links**.
--   **Smart Throttle Reporting**: Reports to the central server only on key events (First Detection, New Intel, Turn 5, Turn 8+).
--   **Compliance-Ready**: Strictly adheres to the Hackathon Evaluation Documentation (Always HTTP 200, PDF-Compliant Payload).
+## Tech Stack
+* **Language/Environment:** Node.js (v18+)
+* **Framework:** Express.js
+* **Database:** MongoDB (Mongoose ORM for robust session state management)
+* **Key Libraries:** `axios` (for HTTP callbacks), `openai` (SDK for LLM routing), `dotenv`
+* **LLM/AI Models:** 
+  * **Primary Model:** FastRouter / Llama-3-8b-instant (Optimized for zero-latency turn responses)
+  * **Fallback Model:** OpenAI GPT-4o-mini (Automatic failover to ensure 100% uptime within the 30s timeout limit)
 
----
+## Setup Instructions
 
-## 🛠️ Setup & Installation
+1. **Clone the repository:**
+   ```bash
+   git clone <your-github-repo-url>
+   cd <repository-folder>
+   ```
 
-### 1. Prerequisites
--   Node.js (v18+)
--   MongoDB (Running locally or Atlas URI)
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-### 2. Environment Variables (.env)
-Create a `.env` file in the root directory:
-```env
-# Server Configuration
-PORT=8080
+3. **Set environment variables:**
+   Create a `.env` file in the root directory and add the following:
 
-# Database
-MONGO_URI=mongodb://localhost:27017/honeypot_db
+   ```env
+   # Server Configuration
+   PORT=8080
 
-# AI Prompts & Keys (Comma-separated for rotation)
-OPENAI_KEYS=sk-proj-...,sk-proj-...
-FAST_ROUTER_KEYS=sk-or-...,sk-or-...
+   # Database
+   MONGO_URI=mongodb://localhost:27017/honeypot_db
 
-# Security
-API_SECRET_KEY=honeypot-secret-key-123
+   # AI Prompts & Keys (Comma-separated for round-robin load balancing)
+   OPENAI_KEYS=sk-proj-...,sk-proj-...
+   FAST_ROUTER_KEYS=sk-or-...,sk-or-...
 
-# Callback Configuration (Where reports are sent)
-CALLBACK_URL=https://hackathon.guvi.in/api/updateHoneyPotFinalResult
-```
+   # Callback Configuration (Where final evaluation reports are sent)
+   CALLBACK_URL=https://hackathon.guvi.in/api/updateHoneyPotFinalResult
+   ```
 
-### 3. Installation
-```bash
-npm install
-npm start
-``` 
-Server will start on `http://localhost:8080`.
+4. **Run the application:**
+   ```bash
+   npm start
+   ```
+   The server will start on `http://localhost:8080`.
 
----
+## API Endpoint
+### Main Evaluator Endpoint
 
-## 📡 API Documentation
+**URL**: `https://final-honeypot-ai-final.onrender.com/api/honeypot` (Update this if your deployed URL changes)
 
-### 1. Incoming Message (Scammer Input)
-**Endpoint**: `POST /api/honeypot/incoming`  
-**Headers**: `x-api-key: <API_SECRET_KEY>`
+**Method**: `POST`
 
-**Request Body**:
+**Authentication**: `x-api-key` header (Key: `top_3`)
+
+**Request Body Schema**:
+Must include `sessionId`, `message`, `conversationHistory`, and `metadata`.
 ```json
 {
   "sessionId": "unique-session-id-123",
@@ -64,11 +72,17 @@ Server will start on `http://localhost:8080`.
   "conversationHistory": [
     { "role": "user", "content": "Hello" },
     { "role": "assistant", "content": "Who is this?" }
-  ]
+  ],
+  "metadata": {
+    "channel": "WhatsApp"
+  }
 }
 ```
 
-**Response (Always HTTP 200)**:
+### Immediate Response Format:
+The API processes the message and returns an HTTP 200 OK within the 30-second timeout limit.
+
+**Response Schema**:
 ```json
 {
   "status": "success",
@@ -76,57 +90,44 @@ Server will start on `http://localhost:8080`.
 }
 ```
 
-### 2. Callback Report (Outgoing Intelligence)
-The system automatically sends this payload to `CALLBACK_URL` when intelligence is found.
+## Callback Mechanism (Final Output)
+After the conversation concludes, or when maximum intelligence is gathered, our background `reportScheduler` automatically packages the extracted data and sends a `POST` request to the hackathon's central evaluator (`CALLBACK_URL`).
 
-**Payload Structure**:
+### Outgoing Callback Payload:
+This payload strictly adheres to the February 19th PDF update, including root-level engagement metrics, new extraction fields (Case/Policy/Order numbers), and the dynamically calculated confidence score.
+
 ```json
 {
   "sessionId": "unique-session-id-123",
-  "status": "success",
   "scamDetected": true,
+  "totalMessagesExchanged": 8,
+  "engagementDurationSeconds": 75,
   "scamType": "bank_fraud",
+  "confidenceLevel": 0.95,
   "extractedIntelligence": {
     "phoneNumbers": ["9876543210"],
     "bankAccounts": ["1234567890"],
     "upiIds": ["scammer@okaxis"],
     "phishingLinks": ["http://fake-sbi.com"],
-    "emailAddresses": ["support@fake-sbi.com"]
+    "emailAddresses": ["support@fake-sbi.com"],
+    "caseIds": ["REF-9988"],
+    "policyNumbers": ["POL-12345"],
+    "orderNumbers": ["ORD-5544"]
   },
-  "engagementMetrics": {
-    "totalMessagesExchanged": 8,
-    "engagementDurationSeconds": 75
-  },
-  "agentNotes": "Scammer demanded OTP. Extracted Bank Account and Phone.",
-  "totalMessagesExchanged": 8,       // Root level for compatibility
-  "engagementDurationSeconds": 75    // Root level for compatibility
+  "agentNotes": "Scammer demanded OTP. Extracted Bank Account and Phone."
 }
 ```
+## Approach
+Our honeypot strategy is divided into three core pillars to maximize scoring across Detection, Extraction, and Engagement:
 
-### 3. Payload Preview (Testing Tool)
-**Endpoint**: `GET /api/callback-preview/:sessionId`  
-See exactly what will be sent to the server for a specific session.
+### 1. Scam Detection
+* **Dynamic Scoring Rubric**: We do not rely on hardcoded responses. Instead, our AI dynamically calculates a `confidenceLevel` (from `0.80` to `0.99`) by analyzing the scammer's message for specific red flags (urgency, OTP requests, suspicious links).
+* **Multi-Layer Classification**: A regex-based pre-processor scans for threat categories, which the LLM then verifies, labeling the attack type (e.g., `bank_fraud`, `investment_scam`).
 
----
+### 2. Intelligence Extraction
+* **Zero-Latency Regex Engine**: Before hitting the AI, every message is passed through our `intelligenceService`, which uses strict Regex to silently extract 8 target fields: Phone Numbers, Bank Accounts, UPI IDs, Phishing Links, Email Addresses, Case IDs, Policy Numbers, and Order Numbers.
+* **Dynamic Target Tracking**: The AI maintains a "Shopping List" of intelligence it hasn't found yet. It is programmed with strict Anti-Looping Rules—if a scammer refuses to provide a phone number, the AI immediately pivots to asking for a bank account instead.
 
-## 🕵️ AI Strategy: "Aggressive Data Trading"
-The AI uses a dynamic "Shopping List" strategy to ensure all 5 fields are extracted.
-
-1.  **Analyze**: Checks what data is missing (e.g., Have Bank, need Email).
-2.  **Excuse**: Generates a valid technical excuse (e.g., "WhatsApp crashing").
-3.  **Demand**: Asks for the specific missing data to "solve" the problem.
-
-**Example**:
-> *Scammer*: "Send OTP."
-> *AI*: "I am trying but the app is failing! Give me your **Bank Account Number** so I can go to the branch and deposit cash directly!"
-
----
-
-## 🧪 How to Test
-1.  **Start Server**: `node server.js`
-2.  **Send Message**: use Postman or Curl to `POST /api/honeypot/incoming`.
-3.  **Check Logs**: Terminal will show:
-    -   `🧠 AI Decision`
-    -   `🕵️ Intelligence Extracted`
-    -   `📤 Callback Data` (in strict JSON format)
-4.  **Verify Callback**: Ensure your `CALLBACK_URL` received the POST request.
+### 3. Maintaining Engagement
+* **Psychological Persona**: The AI acts as a polite, submissive, and highly anxious elderly citizen. It strictly asks only one question per turn.
+* **Channel-Aware Excuses**: The AI reads the `metadata.channel` (SMS, WhatsApp, Email). If the scammer is on WhatsApp, the AI might claim the "app is freezing." If on Email, it claims the "computer screen went white." This contextual realism prevents the scammer from becoming suspicious and guarantees the conversation lasts for the maximum 10 turns.
